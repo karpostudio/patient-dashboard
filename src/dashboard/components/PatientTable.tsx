@@ -39,6 +39,7 @@ interface PatientTableProps {
     searchTerm: string;
     onSearchChange: (value: string) => void;
     totalPatients: number;
+    onRefreshData?: () => Promise<void>;
 }
 
 const ITEMS_PER_PAGE = 40;
@@ -53,6 +54,7 @@ export const PatientTable: React.FC<PatientTableProps> = ({
     searchTerm,
     onSearchChange,
     totalPatients,
+    onRefreshData,
 }) => {
     const [currentPage, setCurrentPage] = useState(1);
     const [sortField, setSortField] = useState<string>('date');
@@ -842,12 +844,17 @@ export const PatientTable: React.FC<PatientTableProps> = ({
                     setSelectedPatientForLabels(null);
                 }}
                 patient={selectedPatientForLabels}
-                onLabelsAssigned={() => {
+                onLabelsAssigned={async () => {
                     // Refresh the note data for the updated patient to show new labels
                     if (selectedPatientForLabels) {
                         const email = selectedPatientForLabels.submissions.email_726a?.trim() || '';
                         const name = `${selectedPatientForLabels.submissions.vorname || ''} ${selectedPatientForLabels.submissions.name_1 || ''}`.trim();
                         loadNoteForSubmission(selectedPatientForLabels._id, email, name);
+                    }
+
+                    // Refresh entire patient data to ensure the table shows updated labels
+                    if (onRefreshData) {
+                        await onRefreshData();
                     }
                 }}
             />

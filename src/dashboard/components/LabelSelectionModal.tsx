@@ -6,7 +6,6 @@ import {
   Button,
   Checkbox,
   Loader,
-  Card,
   EmptyState,
   Input,
   Badge,
@@ -14,7 +13,7 @@ import {
   Divider
 } from '@wix/design-system';
 import * as Icons from '@wix/wix-ui-icons-common';
-import { useLabels, Label } from '../hooks/useLabels';
+import { useLabels } from '../hooks/useLabels';
 import { PatientSubmission } from '../types';
 
 interface LabelSelectionModalProps {
@@ -34,8 +33,6 @@ export const LabelSelectionModal: React.FC<LabelSelectionModalProps> = ({
     labels,
     loadingLabels,
     contactLabels,
-    loadingContactLabels,
-    loadLabels,
     loadContactLabels,
     assignLabels,
     createLabel,
@@ -129,7 +126,6 @@ export const LabelSelectionModal: React.FC<LabelSelectionModalProps> = ({
   };
 
   const currentContactLabels = patient ? contactLabels[patient._id] || [] : [];
-  const isLoadingContactLabels = patient ? loadingContactLabels[patient._id] : false;
 
   return (
     <Modal
@@ -224,9 +220,6 @@ export const LabelSelectionModal: React.FC<LabelSelectionModalProps> = ({
               subtitle="Erstellen Sie Ihr erstes Label oben oder klicken Sie auf Aktualisieren"
               image={<Icons.Tag />}
             />
-            <Text size="tiny" secondary>
-              Debug: loadingLabels={String(loadingLabels)}, labels.length={labels.length}
-            </Text>
           </Box>
         ) : (
           <Box direction="vertical" gap="SP2" align="left" paddingBottom="SP2">

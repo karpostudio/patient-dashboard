@@ -393,6 +393,7 @@ const PatientDashboard: React.FC = () => {
                     searchTerm={filters.searchTerm}
                     onSearchChange={(value) => updateFilter('searchTerm', value)}
                     totalPatients={allSubmissions.length}
+                    onRefreshData={loadSubmissions}
                   />
                 </Cell>
 
