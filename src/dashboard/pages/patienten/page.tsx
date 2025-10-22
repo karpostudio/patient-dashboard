@@ -283,7 +283,7 @@ const PatientDashboard: React.FC = () => {
       onClick: handleOpenTrash
     },
     {
-      text: 'Notizen',
+      text: 'Notizen und Etiketten',
       prefixIcon: <Icons.Note />,
       onClick: handleOpenNotes
     }

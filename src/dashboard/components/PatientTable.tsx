@@ -25,6 +25,7 @@ import * as Icons from '@wix/wix-ui-icons-common';
 import { PatientSubmission } from '../types';
 import { formatToGermanDate, calculateAge } from '../utils/helpers';
 import { useNotes } from '../hooks/useNotes';
+import { LabelSelectionModal } from './LabelSelectionModal';
 
 
 
@@ -57,10 +58,13 @@ export const PatientTable: React.FC<PatientTableProps> = ({
     const [sortField, setSortField] = useState<string>('date');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [editingNotes, setEditingNotes] = useState<{ [submissionId: string]: boolean }>({});
+    const [labelModalOpen, setLabelModalOpen] = useState(false);
+    const [selectedPatientForLabels, setSelectedPatientForLabels] = useState<PatientSubmission | null>(null);
 
 
     // Use the notes hook
     const { notes, loadingNotes, loadNoteForSubmission, saveNote, updateNoteText } = useNotes();
+
 
     // Filter patients based on search term
     const filteredPatients = patients.filter(patient => {
@@ -179,6 +183,7 @@ export const PatientTable: React.FC<PatientTableProps> = ({
         }
     }, [currentPatients, loadNoteForSubmission]);
 
+
     const hasNoPatients = patients.length === 0;
 
     return (
@@ -266,13 +271,38 @@ export const PatientTable: React.FC<PatientTableProps> = ({
         table-layout: fixed;
         word-wrap: break-word;
     }
-    
+
     .modal-content td {
         overflow: hidden;
         text-overflow: ellipsis;
     }
     .custom-grey-text {
         color: #888888 !important;
+    }
+
+    /* Label styling */
+    .patient-label {
+        display: inline-block;
+        padding: 2px 6px;
+        margin: 1px 2px 1px 0;
+        background-color: #E3F2FD;
+        border: 1px solid #BBDEFB;
+        border-radius: 4px;
+        font-size: 10px;
+        line-height: 1.2;
+        color: #1976D2;
+        white-space: nowrap;
+        max-width: 80px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .patient-labels-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        margin-top: 4px;
+        max-width: 200px;
     }
   
 `}</style>
@@ -524,6 +554,29 @@ export const PatientTable: React.FC<PatientTableProps> = ({
                                                                     {patient.submissions.name_der_anmeldenden_person}
                                                                 </Text>
                                                             )}
+
+                                                        {/* Display labelTags as badges */}
+                                                        {(() => {
+                                                            const patientNote = notes[patient._id];
+                                                            const labelTags = patientNote?.labelTags;
+
+                                                            if (labelTags && labelTags.length > 0) {
+                                                                return (
+                                                                    <Box direction="horizontal" gap="SP1" style={{ marginTop: '4px', flexWrap: 'wrap', maxWidth: '200px' }}>
+                                                                        {labelTags.map((label, labelIndex) => (
+                                                                            <Badge
+                                                                                key={labelIndex}
+                                                                                skin="general"
+                                                                                size="tiny"
+                                                                            >
+                                                                                {label}
+                                                                            </Badge>
+                                                                        ))}
+                                                                    </Box>
+                                                                );
+                                                            }
+                                                            return null;
+                                                        })()}
                                                     </Box>
                                                 </Box>
 
@@ -617,6 +670,14 @@ export const PatientTable: React.FC<PatientTableProps> = ({
                                                                     }
                                                                 }}
                                                                 prefixIcon={<Icons.Add />}
+                                                            />
+                                                            <PopoverMenu.MenuItem
+                                                                text="Etikett setzen"
+                                                                onClick={() => {
+                                                                    setSelectedPatientForLabels(patient);
+                                                                    setLabelModalOpen(true);
+                                                                }}
+                                                                prefixIcon={<Icons.Tag />}
                                                             />
                                                             <PopoverMenu.MenuItem
                                                                 text="Bearbeiten"
@@ -772,6 +833,25 @@ export const PatientTable: React.FC<PatientTableProps> = ({
                     </Text>
                 </Box>
             )}
+
+            {/* Label Selection Modal */}
+            <LabelSelectionModal
+                isOpen={labelModalOpen}
+                onClose={() => {
+                    setLabelModalOpen(false);
+                    setSelectedPatientForLabels(null);
+                }}
+                patient={selectedPatientForLabels}
+                onLabelsAssigned={() => {
+                    // Refresh the note data for the updated patient to show new labels
+                    if (selectedPatientForLabels) {
+                        const email = selectedPatientForLabels.submissions.email_726a?.trim() || '';
+                        const name = `${selectedPatientForLabels.submissions.vorname || ''} ${selectedPatientForLabels.submissions.name_1 || ''}`.trim();
+                        loadNoteForSubmission(selectedPatientForLabels._id, email, name);
+                    }
+                }}
+            />
+
         </Box>
     );
 };

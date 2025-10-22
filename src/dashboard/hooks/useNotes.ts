@@ -7,6 +7,7 @@ export interface Note {
     email: string;
     name: string;
     notes: string;
+    labelTags?: string[];
     _createdDate: string;
     _updatedDate: string;
 }
@@ -51,6 +52,7 @@ export const useNotes = () => {
                     email: foundItem.email || email,
                     name: foundItem.name || name,
                     notes: foundItem.notes || '',
+                    labelTags: foundItem.labelTags || [],
                     _createdDate: toDateString(foundItem._createdDate),
                     _updatedDate: toDateString(foundItem._updatedDate)
                 };
@@ -67,6 +69,7 @@ export const useNotes = () => {
                     email,
                     name,
                     notes: '',
+                    labelTags: [],
                     _createdDate: new Date().toISOString(),
                     _updatedDate: new Date().toISOString()
                 };
