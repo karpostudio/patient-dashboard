@@ -37,7 +37,9 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
 
     useEffect(() => {
         if (patient) {
-            const data = { ...patient.submissions };
+            // Exclude signature field from form data since we're not editing it
+            const { signature_3730, ...submissionsWithoutSignature } = patient.submissions;
+            const data = { ...submissionsWithoutSignature };
 
             // Ensure availability data is properly formatted as arrays and convert to display format
             const availabilityFields = ['montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag'];
@@ -97,6 +99,45 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
             const latestSubmission = await submissions.getSubmission(patient._id);
             console.log('Latest submission:', latestSubmission);
 
+            // Ensure we have submissions data
+            if (!latestSubmission.submissions) {
+                throw new Error('Submission data is missing');
+            }
+
+            console.log('Original signature field:', latestSubmission.submissions.signature_3730);
+            console.log('Full original submissions:', JSON.stringify(latestSubmission.submissions, null, 2));
+
+            // Fix invalid signature fields by providing default values
+            let signatureField = latestSubmission.submissions.signature_3730;
+
+            if (signatureField && Array.isArray(signatureField) && signatureField.length > 0) {
+                // Check if the signature has invalid/null values and fix them
+                const sig = signatureField[0];
+
+                // If url is null, undefined, or not a string, set it to a valid placeholder
+                if (!sig.url || typeof sig.url !== 'string') {
+                    console.log('Fixing null/invalid URL in signature');
+                    signatureField = [{
+                        url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', // 1x1 transparent PNG
+                        fileId: sig.fileId || 'placeholder',
+                        displayName: sig.displayName || 'signature',
+                        fileType: sig.fileType || 'image/jpeg',
+                        ...(sig.imported ? { imported: sig.imported } : {})
+                    }];
+                }
+            } else if (!signatureField || (Array.isArray(signatureField) && signatureField.length === 0)) {
+                // No signature or empty array - create valid placeholder signature
+                console.log('Creating default placeholder signature structure');
+                signatureField = [{
+                    url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', // 1x1 transparent PNG
+                    fileId: 'placeholder',
+                    displayName: 'signature',
+                    fileType: 'image/png'
+                }];
+            }
+
+            console.log('Fixed signature field:', signatureField);
+
             // Create update payload following your working Velo pattern
             const updatePayload = {
                 formId: latestSubmission.formId,
@@ -104,11 +145,12 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
                 namespace: "wix.form_app.form",
                 submissions: {
                     ...latestSubmission.submissions,
-                    ...dataToSave // Spread our updated data over the existing data
+                    ...dataToSave,
+                    signature_3730: signatureField // Always include the fixed signature
                 }
             };
 
-            console.log('Update payload:', updatePayload);
+            console.log('Final update payload with fixed signature:', JSON.stringify(updatePayload.submissions.signature_3730, null, 2));
 
             // Update the submission using the same method as your working code
             const updatedSubmission = await submissions.updateSubmission(patient._id, updatePayload);

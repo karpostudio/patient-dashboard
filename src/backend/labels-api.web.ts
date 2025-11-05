@@ -1,6 +1,14 @@
 import { webMethod, Permissions } from '@wix/web-methods';
 import { items } from '@wix/data';
 
+// CORS configuration for web methods
+const corsConfig = {
+  allowedOrigins: '*',
+  allowedMethods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+
 interface Label {
   key: string;
   displayName: string;

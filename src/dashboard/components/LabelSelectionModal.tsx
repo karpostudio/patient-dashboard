@@ -10,7 +10,9 @@ import {
   Input,
   Badge,
   Heading,
-  Divider
+  Divider,
+  Tooltip,
+  IconButton
 } from '@wix/design-system';
 import * as Icons from '@wix/wix-ui-icons-common';
 import { useLabels } from '../hooks/useLabels';
@@ -147,6 +149,8 @@ export const LabelSelectionModal: React.FC<LabelSelectionModalProps> = ({
         direction="vertical"
         gap="SP4"
         padding="SP4"
+        minWidth="500px"
+        maxWidth="600px"
         backgroundColor="white"
         style={{
           backgroundColor: 'white',
@@ -156,13 +160,26 @@ export const LabelSelectionModal: React.FC<LabelSelectionModalProps> = ({
         }}
       >
         {/* Header */}
-        <Box direction="vertical" gap="SP2">
-          <Heading size="medium" weight="bold">Etikett setzen</Heading>
+        <Box direction="vertical" gap="SP2" align="left">
+          <Box direction="horizontal" gap="SP2" align="left" style={{ alignItems: 'center' }}>
+            <Heading align="left" size="medium" weight="bold">Etikett setzen</Heading>
+            <Tooltip
+              content="Etiketten sind mit E-Mails verknüpft. Das bedeutet, dass mehrere Einsendungen mit derselben E-Mail-Adresse automatisch dieselben Etiketten anzeigen."
+              placement="top"
+            >
+              <IconButton
+                size="tiny"
+                skin="light"
+              >
+                <Icons.InfoCircle />
+              </IconButton>
+            </Tooltip>
+          </Box>
           <Divider />
 
           {patient && (
             <Box direction="vertical" gap="SP1">
-              <Text size="medium" weight="bold">
+              <Text size="small">
                 Patient: {`${patient.submissions.vorname || ''} ${patient.submissions.name_1 || ''}`.trim()}
               </Text>
               <Text size="small" secondary>
@@ -174,11 +191,11 @@ export const LabelSelectionModal: React.FC<LabelSelectionModalProps> = ({
 
         {/* Create new label section */}
         <Box direction="vertical" gap="SP2" align="left" paddingBottom="SP2">
-          <Text size="medium" weight="normal">Neues Label erstellen</Text>
+          <Text size="medium" weight="normal">Neues Etikett erstellen</Text>
           <Box direction="horizontal" gap="SP2" align="left" style={{ alignItems: 'center' }}>
             <Box flex={1}>
               <Input
-                placeholder="Label-Name eingeben..."
+                placeholder="Etikett-Name eingeben..."
                 value={newLabelName}
                 onChange={(e) => setNewLabelName(e.target.value)}
                 onKeyDown={(e) => {
@@ -201,8 +218,8 @@ export const LabelSelectionModal: React.FC<LabelSelectionModalProps> = ({
 
 
         {/* Labels selection */}
-        <Box direction="horizontal" align="space-between">
-          <Text size="medium" weight="normal">Verfügbare Labels</Text>
+        <Box direction="horizontal" align="space-between" style={{ alignItems: 'center' }}>
+          <Text size="medium" weight="normal">Verfügbare Etiketten</Text>
           <Button
             size="tiny"
             skin="light"
@@ -219,13 +236,13 @@ export const LabelSelectionModal: React.FC<LabelSelectionModalProps> = ({
         {loadingLabels ? (
           <Box align="left" padding="SP4" gap="SP2">
             <Loader size="tiny" />
-            <Text size="small" secondary>Lade Labels...</Text>
+            <Text size="small" secondary>Lade Etiketten...</Text>
           </Box>
         ) : labels.length === 0 ? (
           <Box direction="vertical" gap="SP2" align="center" padding="SP4">
             <EmptyState
-              title="Keine Labels verfügbar"
-              subtitle="Erstellen Sie Ihr erstes Label oben oder klicken Sie auf Aktualisieren"
+              title="Keine Etiketten verfügbar"
+              subtitle="Erstellen Sie Ihr erstes Etikett oben oder klicken Sie auf Aktualisieren"
               image={<Icons.Tag />}
             />
           </Box>
@@ -250,7 +267,7 @@ export const LabelSelectionModal: React.FC<LabelSelectionModalProps> = ({
         {currentContactLabels.length > 0 && (
           <Box direction="vertical" gap="SP2" align="left" paddingBottom="SP2">
             <Text size="medium" weight="normal">
-              Aktuell zugewiesene Labels:
+              Aktuell zugewiesene Etiketten:
             </Text>
             <Box direction="horizontal" gap="SP1" align="left" style={{ flexWrap: 'wrap' }}>
               {currentContactLabels.map((labelKey: string) => {
@@ -269,6 +286,7 @@ export const LabelSelectionModal: React.FC<LabelSelectionModalProps> = ({
           </Box>
         )}
 
+
         {/* Footer with buttons */}
         <Divider />
         <Box direction="horizontal" gap="SP2" align="right">
@@ -284,7 +302,7 @@ export const LabelSelectionModal: React.FC<LabelSelectionModalProps> = ({
             disabled={saving || !patient}
             prefixIcon={saving ? <Loader size="tiny" /> : <Icons.Confirm />}
           >
-            {saving ? 'Speichern...' : 'Labels speichern'}
+            {saving ? 'Speichern...' : 'Etiketten speichern'}
           </Button>
         </Box>
       </Box>

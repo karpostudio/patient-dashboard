@@ -42,7 +42,12 @@ export interface PatientSubmission {
         bei_volljaehrigen_patienten_zuzahlungsbefreit?: string;
         wuerden_sie_auch_kurzfristige_termine_wahrnehmen_koennen_wenn_z?: string;
         noch_etwas_wichtiges?: string;
-        signature_3730?: { url?: string }[];
+        signature_3730?: {
+            url?: string;
+            fileId?: string;
+            displayName?: string;
+            fileType?: string;
+        }[];
     };
 }
 
