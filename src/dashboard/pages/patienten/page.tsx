@@ -264,10 +264,23 @@ const PatientDashboard: React.FC = () => {
 
   const handleOpenNotes = () => {
     try {
-      const url = 'https://manage.wix.com/dashboard/69ff8e01-cfc2-4e5e-b7e1-37fc3e49370b/database/data/Notes?referralInfo=sidebar';
+      const url = 'https://manage.wix.com/dashboard/69ff8e01-cfc2-4e5e-b7e1-37fc3e49370b/database/data/Notes';
       window.open(url, '_blank'); // opens in a new tab
     } catch (error) {
       console.error('Failed to open notes link:', error);
+      dashboard.showToast({
+        message: 'Notes page temporarily unavailable',
+        type: 'warning'
+      });
+    }
+  };
+
+  const handleOpenLabels = () => {
+    try {
+      const url = 'https://manage.wix.com/dashboard/69ff8e01-cfc2-4e5e-b7e1-37fc3e49370b/database/data/Labels';
+      window.open(url, '_blank'); // opens in a new tab
+    } catch (error) {
+      console.error('Failed to open labels link:', error);
       dashboard.showToast({
         message: 'Notes page temporarily unavailable',
         type: 'warning'
@@ -283,9 +296,14 @@ const PatientDashboard: React.FC = () => {
       onClick: handleOpenTrash
     },
     {
-      text: 'Notizen und Etiketten',
+      text: 'Notizen',
       prefixIcon: <Icons.Note />,
       onClick: handleOpenNotes
+    },
+    {
+      text: 'Etiketten',
+      prefixIcon: <Icons.Tag />,
+      onClick: handleOpenLabels
     }
   ];
 
@@ -393,7 +411,6 @@ const PatientDashboard: React.FC = () => {
                     searchTerm={filters.searchTerm}
                     onSearchChange={(value) => updateFilter('searchTerm', value)}
                     totalPatients={allSubmissions.length}
-                    onRefreshData={loadSubmissions}
                   />
                 </Cell>
 

@@ -32,8 +32,9 @@ export const LabelSelectionModal: React.FC<LabelSelectionModalProps> = ({
   const {
     labels,
     loadingLabels,
-    contactLabels,
-    loadContactLabels,
+    emailLabels,
+    loadingEmailLabels,
+    loadLabelsByEmail,
     assignLabels,
     createLabel,
     forceReloadLabels
@@ -54,27 +55,32 @@ export const LabelSelectionModal: React.FC<LabelSelectionModalProps> = ({
     }
   }, [isOpen]);
 
-  // Load contact labels when patient changes and modal is open
+  // Load email-based labels when patient changes and modal is open
   useEffect(() => {
     if (patient && isOpen) {
-      // Use the patient submission ID
-      const submissionId = patient._id;
-      // Always reload labels when modal opens to ensure fresh data
-      loadContactLabels(submissionId);
+      // Use the patient email for email-based label inheritance
+      const email = patient.submissions.email_726a?.trim() || '';
+      if (email) {
+        // Always reload labels when modal opens to ensure fresh data
+        loadLabelsByEmail(email);
+      }
     }
-  }, [patient, isOpen]); // Removed loadContactLabels from dependencies to prevent infinite loop
+  }, [patient, isOpen, loadLabelsByEmail]);
 
-  // Update selected labels when contact labels are loaded
+  // Update selected labels when email-based labels are loaded
   useEffect(() => {
-    if (patient && contactLabels[patient._id]) {
-      console.log('🏷️ Setting selected labels from loaded data:', contactLabels[patient._id]);
-      setSelectedLabelKeys(contactLabels[patient._id]);
-    } else if (patient && isOpen) {
-      // Reset selection if no labels found
-      console.log('🏷️ No labels found, resetting selection');
-      setSelectedLabelKeys([]);
+    if (patient && isOpen) {
+      const email = patient.submissions.email_726a?.trim() || '';
+      if (email && emailLabels[email]) {
+        console.log('🏷️ Setting selected labels from email-based data:', emailLabels[email]);
+        setSelectedLabelKeys(emailLabels[email]);
+      } else if (email) {
+        // Reset selection if no labels found for this email
+        console.log('🏷️ No email labels found, resetting selection');
+        setSelectedLabelKeys([]);
+      }
     }
-  }, [patient, contactLabels, isOpen]);
+  }, [patient, emailLabels, isOpen]);
 
   const handleLabelToggle = (labelKey: string) => {
     setSelectedLabelKeys(prev => {
@@ -125,7 +131,9 @@ export const LabelSelectionModal: React.FC<LabelSelectionModalProps> = ({
     }
   };
 
-  const currentContactLabels = patient ? contactLabels[patient._id] || [] : [];
+  const currentContactLabels = patient
+    ? emailLabels[patient.submissions.email_726a?.trim() || ''] || []
+    : [];
 
   return (
     <Modal
@@ -245,7 +253,7 @@ export const LabelSelectionModal: React.FC<LabelSelectionModalProps> = ({
               Aktuell zugewiesene Labels:
             </Text>
             <Box direction="horizontal" gap="SP1" align="left" style={{ flexWrap: 'wrap' }}>
-              {currentContactLabels.map((labelKey) => {
+              {currentContactLabels.map((labelKey: string) => {
                 const label = labels.find(l => l.key === labelKey);
                 return (
                   <Badge

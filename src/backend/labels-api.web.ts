@@ -18,6 +18,14 @@ interface NoteItem {
   _updatedDate?: string;
 }
 
+interface LabelRecord {
+  _id?: string;
+  email: string;
+  labelTags: string[];
+  _createdDate?: string;
+  _updatedDate?: string;
+}
+
 interface BackendResponse<T = any> {
   success: boolean;
   error?: string;
@@ -25,24 +33,44 @@ interface BackendResponse<T = any> {
   debug?: any;
 }
 
-// Get all unique labels from Notes collection
+// Get all unique labels from both Notes and Labels collections
 export const listLabels = webMethod(
   Permissions.Anyone,
   async (): Promise<BackendResponse<Label[]>> => {
     try {
-      console.log('Fetching all unique labels from Notes collection...');
+      console.log('Fetching all unique labels from Notes and Labels collections...');
 
+      // Get labels from Notes collection (legacy)
       const notesResult = await items.query("Notes")
         .limit(1000)
         .find();
 
-      console.log('Notes query result:', notesResult);
+      // Get labels from Labels collection (new email-based)
+      const labelsResult = await items.query("Labels")
+        .limit(1000)
+        .find();
 
-      // Extract all unique labels from all notes
+      console.log('Notes query result:', notesResult);
+      console.log('Labels query result:', labelsResult);
+
+      // Extract all unique labels from both collections
       const allLabels = new Set<string>();
+
+      // From Notes collection
       notesResult.items.forEach((note: any) => {
         if (note.labelTags && Array.isArray(note.labelTags)) {
           note.labelTags.forEach((tag: any) => {
+            if (tag && typeof tag === 'string') {
+              allLabels.add(tag.trim());
+            }
+          });
+        }
+      });
+
+      // From Labels collection
+      labelsResult.items.forEach((labelRecord: any) => {
+        if (labelRecord.labelTags && Array.isArray(labelRecord.labelTags)) {
+          labelRecord.labelTags.forEach((tag: any) => {
             if (tag && typeof tag === 'string') {
               allLabels.add(tag.trim());
             }
@@ -62,7 +90,9 @@ export const listLabels = webMethod(
         data: labelsList,
         debug: {
           totalNotesQueried: notesResult.items.length,
+          totalLabelsQueried: labelsResult.items.length,
           notesWithLabels: notesResult.items.filter((note: any) => note.labelTags && Array.isArray(note.labelTags) && note.labelTags.length > 0).length,
+          labelsWithTags: labelsResult.items.filter((record: any) => record.labelTags && Array.isArray(record.labelTags) && record.labelTags.length > 0).length,
           uniqueLabelsFound: labelsList.length,
           rawLabels: Array.from(allLabels)
         }
@@ -82,50 +112,46 @@ export const listLabels = webMethod(
   }
 );
 
-// Assign labels to a contact (via Notes collection, same pattern as notes)
+// Assign labels to a contact (via Labels collection for email-based inheritance)
 export const assignLabelsToContact = webMethod(
   Permissions.Anyone,
   async (submissionId: string, email: string, name: string, labelTags: string[]): Promise<BackendResponse> => {
     try {
-      console.log('Assigning labels to contact via Notes:', { submissionId, email, name, labelTags });
+      console.log('Assigning labels to contact via Labels collection:', { submissionId, email, name, labelTags });
 
-      if (!submissionId) {
+      if (!email || email.trim() === '') {
         return {
           success: false,
-          error: 'SubmissionId is required'
+          error: 'Email is required for label assignment'
         };
       }
 
-      // Find existing note for this submission (same logic as notes system)
-      const existingNote = await items.query("Notes")
-        .eq("submissionId", submissionId)
+      const trimmedEmail = email.trim();
+
+      // Find existing label record for this email in Labels collection
+      const existingLabelRecord = await items.query("Labels")
+        .eq("email", trimmedEmail)
         .limit(1)
         .find();
 
       let result;
 
-      if (existingNote.items.length > 0) {
-        // Update existing note with new labels (preserve existing notes and other fields)
-        const noteItem = existingNote.items[0];
-        result = await items.update("Notes", {
-          _id: noteItem._id,
-          submissionId,
-          email: email,
-          name: name,
-          notes: noteItem.notes || '', // Preserve existing notes
+      if (existingLabelRecord.items.length > 0) {
+        // Update existing label record
+        const labelRecord = existingLabelRecord.items[0];
+        result = await items.update("Labels", {
+          _id: labelRecord._id,
+          email: trimmedEmail,
           labelTags: labelTags
         });
-        console.log('Updated existing note with labels:', result);
+        console.log('Updated existing label record:', result);
       } else {
-        // Create new note with labels (same pattern as notes system)
-        result = await items.insert("Notes", {
-          submissionId: submissionId,
-          email: email,
-          name: name,
-          notes: '',
+        // Create new label record
+        result = await items.insert("Labels", {
+          email: trimmedEmail,
           labelTags: labelTags
         });
-        console.log('Created new note with labels:', result);
+        console.log('Created new label record:', result);
       }
 
       return {
@@ -133,11 +159,12 @@ export const assignLabelsToContact = webMethod(
         data: result,
         debug: {
           submissionId,
-          email,
+          email: trimmedEmail,
           name,
           labelTags,
-          noteId: result._id,
-          wasUpdate: existingNote.items.length > 0
+          labelRecordId: result._id,
+          wasUpdate: existingLabelRecord.items.length > 0,
+          message: 'Labels stored in Labels collection for email-based inheritance'
         }
       };
     } catch (error) {
@@ -151,7 +178,62 @@ export const assignLabelsToContact = webMethod(
   }
 );
 
-// Get contact labels (from Notes collection)
+// Get labels by email (from Labels collection for email-based inheritance)
+export const getLabelsByEmail = webMethod(
+  Permissions.Anyone,
+  async (email: string): Promise<BackendResponse<string[]>> => {
+    try {
+      console.log('Fetching labels by email from Labels collection:', email);
+
+      if (!email || email.trim() === '') {
+        return {
+          success: true,
+          data: [],
+          debug: {
+            email,
+            message: 'No email provided, returning empty labels'
+          }
+        };
+      }
+
+      const trimmedEmail = email.trim();
+
+      const labelResult = await items.query("Labels")
+        .eq("email", trimmedEmail)
+        .limit(1)
+        .find();
+
+      console.log('Label record details for email:', labelResult);
+
+      let labelTags: string[] = [];
+      if (labelResult.items.length > 0 && labelResult.items[0].labelTags) {
+        labelTags = Array.isArray(labelResult.items[0].labelTags)
+          ? labelResult.items[0].labelTags.filter(tag => tag && typeof tag === 'string')
+          : [];
+      }
+
+      return {
+        success: true,
+        data: labelTags,
+        debug: {
+          email: trimmedEmail,
+          labelTags,
+          labelRecordFound: labelResult.items.length > 0,
+          labelRecordInfo: labelResult.items[0] || null
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching labels by email:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        debug: { email, error }
+      };
+    }
+  }
+);
+
+// Get contact labels (from Notes collection - LEGACY for backward compatibility)
 export const getContactLabels = webMethod(
   Permissions.Anyone,
   async (submissionId: string): Promise<BackendResponse<string[]>> => {
@@ -188,6 +270,83 @@ export const getContactLabels = webMethod(
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
         debug: { submissionId, error }
+      };
+    }
+  }
+);
+
+// Get labels for multiple emails in batch (for performance)
+export const getBatchLabelsByEmails = webMethod(
+  Permissions.Anyone,
+  async (emails: string[]): Promise<BackendResponse<{ [email: string]: string[] }>> => {
+    try {
+      console.log('Fetching labels for multiple emails from Labels collection:', emails);
+
+      if (!emails || emails.length === 0) {
+        return {
+          success: true,
+          data: {},
+          debug: {
+            emails: [],
+            message: 'No emails provided, returning empty results'
+          }
+        };
+      }
+
+      // Filter out empty emails and trim
+      const validEmails = emails.filter(email => email && email.trim() !== '').map(email => email.trim());
+
+      if (validEmails.length === 0) {
+        return {
+          success: true,
+          data: {},
+          debug: {
+            emails: validEmails,
+            message: 'No valid emails provided, returning empty results'
+          }
+        };
+      }
+
+      // Query Labels collection for all emails at once
+      const labelResults = await items.query("Labels")
+        .hasSome("email", validEmails)
+        .limit(1000)
+        .find();
+
+      console.log('Batch label results:', labelResults);
+
+      // Build the result object
+      const emailToLabels: { [email: string]: string[] } = {};
+
+      // Initialize all emails with empty arrays
+      validEmails.forEach(email => {
+        emailToLabels[email] = [];
+      });
+
+      // Fill in the actual labels
+      labelResults.items.forEach((labelRecord: any) => {
+        if (labelRecord.email && labelRecord.labelTags && Array.isArray(labelRecord.labelTags)) {
+          const validLabels = labelRecord.labelTags.filter((tag: any) => tag && typeof tag === 'string');
+          emailToLabels[labelRecord.email] = validLabels;
+        }
+      });
+
+      return {
+        success: true,
+        data: emailToLabels,
+        debug: {
+          emails: validEmails,
+          totalEmailsRequested: validEmails.length,
+          labelRecordsFound: labelResults.items.length,
+          emailsWithLabels: Object.keys(emailToLabels).filter(email => emailToLabels[email].length > 0).length
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching batch labels by emails:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        debug: { emails, error }
       };
     }
   }

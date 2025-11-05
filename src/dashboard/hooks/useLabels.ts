@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { listLabels, assignLabelsToContact, getContactLabels, findOrCreateLabel } from '../../backend/labels-api.web';
+import { listLabels, assignLabelsToContact, getContactLabels, getLabelsByEmail, getBatchLabelsByEmails, findOrCreateLabel } from '../../backend/labels-api.web';
 
 export interface Label {
   key: string;
@@ -12,6 +12,8 @@ export const useLabels = () => {
   const [loadingLabels, setLoadingLabels] = useState<boolean>(false);
   const [contactLabels, setContactLabels] = useState<{ [submissionId: string]: string[] }>({});
   const [loadingContactLabels, setLoadingContactLabels] = useState<{ [submissionId: string]: boolean }>({});
+  const [emailLabels, setEmailLabels] = useState<{ [email: string]: string[] }>({});
+  const [loadingEmailLabels, setLoadingEmailLabels] = useState<{ [email: string]: boolean }>({});
 
   // Load all available labels
   const loadLabels = useCallback(async () => {
@@ -74,16 +76,142 @@ export const useLabels = () => {
     }
   }, []); // Remove loadingContactLabels dependency to prevent callback recreation
 
-  // Assign labels to a contact (same pattern as notes system)
+  // Load labels for a specific email (from Labels collection)
+  const loadLabelsByEmail = useCallback(async (email: string) => {
+    if (!email || email.trim() === '') {
+      console.log('🔄 No email provided, skipping label load');
+      return;
+    }
+
+    const trimmedEmail = email.trim();
+
+    if (loadingEmailLabels[trimmedEmail]) {
+      console.log('🔄 Already loading labels for email:', trimmedEmail);
+      return;
+    }
+
+    console.log('🚀 Starting to load labels for email:', trimmedEmail);
+    setLoadingEmailLabels(prev => ({ ...prev, [trimmedEmail]: true }));
+
+    try {
+      console.log('🔍 Calling getLabelsByEmail API for:', trimmedEmail);
+      const response = await getLabelsByEmail(trimmedEmail);
+
+      console.log('📋 API Response for email', trimmedEmail, ':', response);
+
+      if (response.success && response.data) {
+        console.log('✅ Email labels loaded for', trimmedEmail, ':', response.data);
+        setEmailLabels(prev => {
+          const updated = { ...prev, [trimmedEmail]: response.data || [] };
+          console.log('🏷️ Updated emailLabels state:', updated);
+          return updated;
+        });
+      } else {
+        console.error('❌ Error loading email labels for', trimmedEmail, ':', response.error);
+        setEmailLabels(prev => ({ ...prev, [trimmedEmail]: [] }));
+      }
+    } catch (error) {
+      console.error('❌ Exception loading email labels for', trimmedEmail, ':', error);
+      setEmailLabels(prev => ({ ...prev, [trimmedEmail]: [] }));
+    } finally {
+      setLoadingEmailLabels(prev => ({ ...prev, [trimmedEmail]: false }));
+    }
+  }, []);
+
+  // Load labels for multiple emails in batch (for performance)
+  const loadBatchLabelsByEmails = useCallback(async (emails: string[]) => {
+    if (!emails || emails.length === 0) {
+      console.log('🔄 No emails provided for batch loading');
+      return;
+    }
+
+    const validEmails = emails.filter(email => email && email.trim() !== '').map(email => email.trim());
+
+    if (validEmails.length === 0) {
+      console.log('🔄 No valid emails for batch loading');
+      return;
+    }
+
+    // Check which emails we don't already have loaded or are loading
+    const emailsToLoad = validEmails.filter(email =>
+      !emailLabels[email] && !loadingEmailLabels[email]
+    );
+
+    if (emailsToLoad.length === 0) {
+      console.log('🔄 All emails already loaded or loading');
+      return;
+    }
+
+    console.log('🚀 Starting batch load for emails:', emailsToLoad);
+
+    // Mark all emails as loading
+    setLoadingEmailLabels(prev => {
+      const updated = { ...prev };
+      emailsToLoad.forEach(email => {
+        updated[email] = true;
+      });
+      return updated;
+    });
+
+    try {
+      console.log('🔍 Calling getBatchLabelsByEmails API for:', emailsToLoad);
+      const response = await getBatchLabelsByEmails(emailsToLoad);
+
+      console.log('📋 Batch API Response:', response);
+
+      if (response.success && response.data) {
+        console.log('✅ Batch email labels loaded:', response.data);
+        setEmailLabels(prev => {
+          const updated = { ...prev, ...response.data };
+          console.log('🏷️ Updated emailLabels state:', updated);
+          return updated;
+        });
+      } else {
+        console.error('❌ Error loading batch email labels:', response.error);
+        // Set empty arrays for failed emails
+        setEmailLabels(prev => {
+          const updated = { ...prev };
+          emailsToLoad.forEach(email => {
+            updated[email] = [];
+          });
+          return updated;
+        });
+      }
+    } catch (error) {
+      console.error('❌ Exception loading batch email labels:', error);
+      // Set empty arrays for failed emails
+      setEmailLabels(prev => {
+        const updated = { ...prev };
+        emailsToLoad.forEach(email => {
+          updated[email] = [];
+        });
+        return updated;
+      });
+    } finally {
+      // Mark all emails as no longer loading
+      setLoadingEmailLabels(prev => {
+        const updated = { ...prev };
+        emailsToLoad.forEach(email => {
+          updated[email] = false;
+        });
+        return updated;
+      });
+    }
+  }, [emailLabels, loadingEmailLabels]);
+
+  // Assign labels to a contact (via Labels collection for email-based inheritance)
   const assignLabels = useCallback(async (submissionId: string, email: string, name: string, labelKeys: string[]): Promise<boolean> => {
     try {
-      console.log('🏷️ Assigning labels to submission:', { submissionId, email, name, labelKeys });
+      console.log('🏷️ Assigning labels to email (Labels collection):', { submissionId, email, name, labelKeys });
       const response = await assignLabelsToContact(submissionId, email, name, labelKeys);
 
       if (response.success) {
-        console.log('✅ Labels assigned successfully');
-        // Update local cache
+        console.log('✅ Labels assigned successfully to Labels collection');
+        // Update local caches for both submission and email
         setContactLabels(prev => ({ ...prev, [submissionId]: labelKeys }));
+        if (email && email.trim() !== '') {
+          setEmailLabels(prev => ({ ...prev, [email.trim()]: labelKeys }));
+        }
         return true;
       } else {
         console.error('❌ Error assigning labels:', response.error);
@@ -154,8 +282,12 @@ export const useLabels = () => {
     loadingLabels,
     contactLabels,
     loadingContactLabels,
+    emailLabels,
+    loadingEmailLabels,
     loadLabels,
     loadContactLabels,
+    loadLabelsByEmail,
+    loadBatchLabelsByEmails,
     assignLabels,
     createLabel,
     forceReloadLabels

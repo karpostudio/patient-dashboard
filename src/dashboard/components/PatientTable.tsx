@@ -25,6 +25,7 @@ import * as Icons from '@wix/wix-ui-icons-common';
 import { PatientSubmission } from '../types';
 import { formatToGermanDate, calculateAge } from '../utils/helpers';
 import { useNotes } from '../hooks/useNotes';
+import { useLabels } from '../hooks/useLabels';
 import { LabelSelectionModal } from './LabelSelectionModal';
 
 
@@ -66,6 +67,9 @@ export const PatientTable: React.FC<PatientTableProps> = ({
 
     // Use the notes hook
     const { notes, loadingNotes, loadNoteForSubmission, saveNote, updateNoteText } = useNotes();
+
+    // Use the labels hook for email-based label inheritance
+    const { emailLabels, loadBatchLabelsByEmails, loadLabelsByEmail } = useLabels();
 
 
     // Filter patients based on search term
@@ -184,6 +188,19 @@ export const PatientTable: React.FC<PatientTableProps> = ({
             });
         }
     }, [currentPatients, loadNoteForSubmission]);
+
+    // Load email-based labels for visible patients in batch (from Labels collection)
+    useEffect(() => {
+        if (currentPatients.length > 0) {
+            const emails = currentPatients
+                .map(patient => patient.submissions.email_726a?.trim() || '')
+                .filter(email => email !== '');
+
+            if (emails.length > 0) {
+                loadBatchLabelsByEmails(emails);
+            }
+        }
+    }, [currentPatients, loadBatchLabelsByEmails]);
 
 
     const hasNoPatients = patients.length === 0;
@@ -557,15 +574,15 @@ export const PatientTable: React.FC<PatientTableProps> = ({
                                                                 </Text>
                                                             )}
 
-                                                        {/* Display labelTags as badges */}
+                                                        {/* Display email-based labels (from Labels collection) */}
                                                         {(() => {
-                                                            const patientNote = notes[patient._id];
-                                                            const labelTags = patientNote?.labelTags;
+                                                            const email = patient.submissions.email_726a?.trim() || '';
+                                                            const emailBasedLabels = email ? emailLabels[email] : [];
 
-                                                            if (labelTags && labelTags.length > 0) {
+                                                            if (emailBasedLabels && emailBasedLabels.length > 0) {
                                                                 return (
                                                                     <Box direction="horizontal" gap="SP1" style={{ marginTop: '4px', flexWrap: 'wrap', maxWidth: '200px' }}>
-                                                                        {labelTags.map((label, labelIndex) => (
+                                                                        {emailBasedLabels.map((label, labelIndex) => (
                                                                             <Badge
                                                                                 key={labelIndex}
                                                                                 skin="general"
@@ -850,6 +867,11 @@ export const PatientTable: React.FC<PatientTableProps> = ({
                         const email = selectedPatientForLabels.submissions.email_726a?.trim() || '';
                         const name = `${selectedPatientForLabels.submissions.vorname || ''} ${selectedPatientForLabels.submissions.name_1 || ''}`.trim();
                         loadNoteForSubmission(selectedPatientForLabels._id, email, name);
+
+                        // Also refresh email-based labels from Labels collection
+                        if (email) {
+                            loadLabelsByEmail(email);
+                        }
                     }
 
                     // Refresh entire patient data to ensure the table shows updated labels
