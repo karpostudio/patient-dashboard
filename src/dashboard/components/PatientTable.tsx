@@ -33,7 +33,7 @@ import { LabelSelectionModal } from './LabelSelectionModal';
 interface PatientTableProps {
     patients: PatientSubmission[];
     onViewPatient: (patient: PatientSubmission) => void;
-    onPrintPatient: (patient: PatientSubmission) => void;
+    onPrintPatient: (patient: PatientSubmission) => Promise<void>;
     onDeletePatient: (patientId: string) => void;
     onEditPatient: (patient: PatientSubmission) => void;
     onUpdatePatientStatus: (patientId: string, status: string) => void;
@@ -63,7 +63,6 @@ export const PatientTable: React.FC<PatientTableProps> = ({
     const [editingNotes, setEditingNotes] = useState<{ [submissionId: string]: boolean }>({});
     const [labelModalOpen, setLabelModalOpen] = useState(false);
     const [selectedPatientForLabels, setSelectedPatientForLabels] = useState<PatientSubmission | null>(null);
-
 
     // Use the notes hook
     const { notes, loadingNotes, loadNoteForSubmission, saveNote, updateNoteText } = useNotes();
@@ -201,7 +200,6 @@ export const PatientTable: React.FC<PatientTableProps> = ({
             }
         }
     }, [currentPatients, loadBatchLabelsByEmails]);
-
 
     const hasNoPatients = patients.length === 0;
 

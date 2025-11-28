@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Modal,
     Box,
@@ -10,12 +10,13 @@ import {
 import * as Icons from '@wix/wix-ui-icons-common';
 import { PatientSubmission } from '../types';
 import { useNotes } from '../hooks/useNotes';
+import { getSignatureDownloadUrl } from '../../backend/forms.web';
 
 interface PatientDetailsModalProps {
     patient: PatientSubmission | null;
     isOpen: boolean;
     onClose: () => void;
-    onPrint: (patient: PatientSubmission) => void;
+    onPrint: (patient: PatientSubmission, signatureUrl?: string | null) => void;
 }
 
 export const PatientDetailsModal: React.FC<PatientDetailsModalProps> = ({
@@ -24,6 +25,76 @@ export const PatientDetailsModal: React.FC<PatientDetailsModalProps> = ({
     onClose,
     onPrint
 }) => {
+    const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
+    const [signatureLoading, setSignatureLoading] = useState(false);
+    const [signatureFailed, setSignatureFailed] = useState(false);
+
+    // Load signature using download URL for private files
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadSignature = async () => {
+            if (!patient) {
+                setSignatureUrl(null);
+                setSignatureFailed(false);
+                return;
+            }
+
+            // Get signature object from submission
+            const sig = patient.submissions.signature_3730;
+            if (!sig || (Array.isArray(sig) && sig.length === 0)) {
+                setSignatureUrl(null);
+                setSignatureFailed(false);
+                return;
+            }
+
+            const signatureObj = Array.isArray(sig) ? sig[0] : sig;
+
+            // Need fileId to generate download URL
+            if (!signatureObj?.fileId) {
+                setSignatureUrl(null);
+                setSignatureFailed(false);
+                return;
+            }
+
+            if (isMounted) {
+                setSignatureLoading(true);
+                setSignatureFailed(false);
+            }
+
+            try {
+                // Get temporary download URL for private file
+                const result = await getSignatureDownloadUrl(signatureObj.fileId);
+
+                if (isMounted) {
+                    if (result.success && result.downloadUrl) {
+                        setSignatureUrl(result.downloadUrl);
+                    } else {
+                        setSignatureFailed(true);
+                    }
+                    setSignatureLoading(false);
+                }
+            } catch (error) {
+                if (isMounted) {
+                    setSignatureFailed(true);
+                    setSignatureLoading(false);
+                }
+            }
+        };
+
+        loadSignature();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [patient]);
+
+    // Handle image load failure
+    const handleImageError = () => {
+        setSignatureFailed(true);
+        setSignatureUrl(null);
+    };
+
     if (!patient) return null;
 
     const formatToGermanDate = (dateString: string) => {
@@ -148,7 +219,7 @@ export const PatientDetailsModal: React.FC<PatientDetailsModalProps> = ({
                         <Button
                             size="medium"
                             prefixIcon={<Icons.Print />}
-                            onClick={() => onPrint(patient)}
+                            onClick={() => onPrint(patient, signatureUrl)}
                         >
                             Drucken
                         </Button>
@@ -491,13 +562,18 @@ export const PatientDetailsModal: React.FC<PatientDetailsModalProps> = ({
                                             Unterschrift
                                         </td>
                                         <td style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'center' }}>
-                                            {patient.submissions.signature_3730?.[0]?.url && (
+                                            {signatureLoading ? (
+                                                <Text size="small">Laden...</Text>
+                                            ) : signatureFailed ? (
+                                                <Text size="small" skin="disabled">Nicht verfügbar</Text>
+                                            ) : signatureUrl ? (
                                                 <img
-                                                    src={patient.submissions.signature_3730[0].url}
+                                                    src={signatureUrl}
                                                     alt="Unterschrift"
                                                     style={{ maxWidth: '100px', maxHeight: '50px' }}
+                                                    onError={handleImageError}
                                                 />
-                                            )}
+                                            ) : null}
                                         </td>
                                     </tr>
                                 </tbody>

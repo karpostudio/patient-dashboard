@@ -31,19 +31,14 @@ export const useNotes = () => {
         setLoadingNotes(prev => ({ ...prev, [submissionId]: true }));
 
         try {
-            console.log('🔍 Loading note for submission:', submissionId);
-
             // Query the Notes collection directly
             const results = await items.query("Notes")
                 .eq("submissionId", submissionId)
                 .limit(1)
                 .find();
 
-            console.log('📋 Query results:', results);
-
             if (results.items.length > 0) {
                 const foundItem = results.items[0];
-                console.log('✅ Found note item:', foundItem);
 
                 // Convert to Note interface
                 const note: Note = {
@@ -58,10 +53,8 @@ export const useNotes = () => {
                 };
 
                 setNotes(prev => ({ ...prev, [submissionId]: note }));
-                console.log('📝 Note loaded:', note);
                 return note;
             } else {
-                console.log('❌ No note found for submission:', submissionId);
                 // Create empty note structure
                 const emptyNote: Note = {
                     _id: '',
@@ -77,7 +70,6 @@ export const useNotes = () => {
                 return emptyNote;
             }
         } catch (error) {
-            console.error(`❌ Error loading note for submission ${submissionId}:`, error);
             return null;
         } finally {
             setLoadingNotes(prev => ({ ...prev, [submissionId]: false }));
@@ -88,11 +80,8 @@ export const useNotes = () => {
         setLoadingNotes(prev => ({ ...prev, [submissionId]: true }));
 
         try {
-            console.log('💾 Saving note for submission:', submissionId, 'with text:', noteText);
-
             const currentNote = notes[submissionId];
             if (!currentNote) {
-                console.error('❌ No note found to update');
                 return false;
             }
 
@@ -105,8 +94,6 @@ export const useNotes = () => {
                     name: currentNote.name,
                     notes: noteText
                 });
-
-                console.log('✅ Note updated:', updatedItem);
 
                 // Update local state
                 const updatedNote: Note = {
@@ -126,8 +113,6 @@ export const useNotes = () => {
                     notes: noteText
                 });
 
-                console.log('✅ Note created:', newItem);
-
                 // Update local state
                 const newNote: Note = {
                     _id: newItem._id || '',
@@ -143,7 +128,6 @@ export const useNotes = () => {
                 return true;
             }
         } catch (error) {
-            console.error(`❌ Error saving note for submission ${submissionId}:`, error);
             return false;
         } finally {
             setLoadingNotes(prev => ({ ...prev, [submissionId]: false }));

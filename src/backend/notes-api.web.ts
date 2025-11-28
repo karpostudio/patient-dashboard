@@ -30,14 +30,10 @@ export const getNoteForSubmission = webMethod(
   Permissions.Anyone,
   async (submissionId: string): Promise<BackendResponse<Note>> => {
     try {
-      console.log('Searching for note with submissionId:', submissionId);
-
       const results = await items.query("Notes")
         .eq("submissionId", submissionId)
         .limit(1)
         .find();
-
-      console.log('Query results:', results);
 
       // Convert WixDataItem to Note or return null
       const foundItem = results.items.length > 0 ? results.items[0] : null;
@@ -53,20 +49,13 @@ export const getNoteForSubmission = webMethod(
 
       return {
         success: true,
-        note: note || undefined,
-        debug: {
-          submissionId,
-          foundItems: results.items.length,
-          totalCount: results.totalCount,
-          rawItem: foundItem // Show raw data for debugging
-        }
+        note: note || undefined
       };
     } catch (error) {
       console.error('Error fetching note:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        debug: { submissionId, error: error }
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   }
@@ -77,7 +66,6 @@ export const saveNote = webMethod(
   Permissions.Anyone,
   async (submissionId: string, email: string, name: string, noteText: string, noteId?: string | null): Promise<BackendResponse<Note>> => {
     try {
-      console.log('Saving note:', { submissionId, email, name, noteText, noteId });
 
       if (noteId) {
         // Update existing note
@@ -90,7 +78,6 @@ export const saveNote = webMethod(
         };
 
         const updatedItem = await items.update("Notes", toUpdate);
-        console.log('Update result:', updatedItem);
 
         // Convert updated item to Note
         const note: Note = {
@@ -114,7 +101,6 @@ export const saveNote = webMethod(
         };
 
         const insertedItem = await items.insert("Notes", newItem);
-        console.log('Insert result:', insertedItem);
 
         // Convert inserted item to Note
         const note: Note = {
@@ -133,8 +119,7 @@ export const saveNote = webMethod(
       console.error('Error saving note:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        debug: { submissionId, email, name, noteText, noteId, error }
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   }
@@ -149,8 +134,6 @@ export const getAllNotes = webMethod(
         .limit(100)
         .find();
 
-      console.log('All notes:', results);
-
       // Convert all items to Notes
       const notes: Note[] = results.items.map(item => ({
         _id: item._id || '',
@@ -164,12 +147,7 @@ export const getAllNotes = webMethod(
 
       return {
         success: true,
-        note: notes,
-        debug: {
-          totalCount: results.totalCount,
-          itemsReturned: results.items.length,
-          rawItems: results.items.slice(0, 3) // Show first 3 raw items for debugging
-        }
+        note: notes
       };
     } catch (error) {
       console.error('Error fetching all notes:', error);

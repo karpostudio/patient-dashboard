@@ -74,11 +74,8 @@ export const LabelSelectionModal: React.FC<LabelSelectionModalProps> = ({
     if (patient && isOpen) {
       const email = patient.submissions.email_726a?.trim() || '';
       if (email && emailLabels[email]) {
-        console.log('🏷️ Setting selected labels from email-based data:', emailLabels[email]);
         setSelectedLabelKeys(emailLabels[email]);
       } else if (email) {
-        // Reset selection if no labels found for this email
-        console.log('🏷️ No email labels found, resetting selection');
         setSelectedLabelKeys([]);
       }
     }
@@ -223,10 +220,7 @@ export const LabelSelectionModal: React.FC<LabelSelectionModalProps> = ({
           <Button
             size="tiny"
             skin="light"
-            onClick={() => {
-              console.log('Manual refresh clicked');
-              forceReloadLabels();
-            }}
+            onClick={() => forceReloadLabels()}
             prefixIcon={<Icons.Refresh />}
           >
             Aktualisieren

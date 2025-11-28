@@ -1,6 +1,6 @@
 import { PatientSubmission } from '../types';
 
-export const printPatientDetails = (patient: PatientSubmission) => {
+export const printPatientDetails = (patient: PatientSubmission, signatureUrl?: string | null) => {
     const formatToGermanDate = (dateString: string) => {
         if (!dateString) return "Ungültiges Datum";
 
@@ -328,10 +328,7 @@ export const printPatientDetails = (patient: PatientSubmission) => {
                             <td>${formatToGermanDate(patient.submissions.date_5bd8 || patient._createdDate)}</td>
                             <td class="label-small">Unterschrift</td>
                             <td class="signature-cell">
-                                ${patient.submissions.signature_3730?.[0]?.url
-            ? `<img src="${patient.submissions.signature_3730[0].url}" alt="Unterschrift">`
-            : ''
-        }
+                                ${signatureUrl ? `<img src="${signatureUrl}" alt="Unterschrift">` : ''}
                             </td>
                         </tr>
                     </tbody>

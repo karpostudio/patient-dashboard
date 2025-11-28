@@ -47,6 +47,7 @@ export interface PatientSubmission {
             fileId?: string;
             displayName?: string;
             fileType?: string;
+            imported?: boolean;
         }[];
     };
 }

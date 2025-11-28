@@ -167,10 +167,8 @@ const PatientDashboard: React.FC = () => {
   };
 
   const handleViewPatient = (patient: any) => {
-    console.log('handleViewPatient called with:', patient);
     setSelectedPatient(patient);
     setIsModalOpen(true);
-    console.log('Modal should be open now, isModalOpen:', true);
   };
 
   const handleCloseModal = () => {
@@ -178,13 +176,11 @@ const PatientDashboard: React.FC = () => {
     setSelectedPatient(null);
   };
 
-  const handlePrintPatient = (patient: any) => {
-    console.log('Printing patient:', patient);
-    printPatientDetails(patient);
+  const handlePrintPatient = async (patient: any, signatureUrl?: string | null) => {
+    printPatientDetails(patient, signatureUrl);
   };
 
   const handleEditPatient = (patient: any) => {
-    console.log('Editing patient:', patient);
     setPatientToEdit(patient);
     setIsEditModalOpen(true);
   };
@@ -200,25 +196,15 @@ const PatientDashboard: React.FC = () => {
   };
 
   const handleDeletePatient = (patientId: string) => {
-    console.log('handleDeletePatient called with ID:', patientId);
-    console.log('All submissions:', allSubmissions);
-
-    // Find the patient to show their name in the modal
     const patient = allSubmissions.find(p => p._id === patientId);
-    console.log('Found patient:', patient);
-
     setPatientToDelete(patient);
     setIsDeleteModalOpen(true);
-
-    console.log('Modal state set to true');
   };
 
   const confirmDeletePatient = async () => {
     if (!patientToDelete) return;
 
     try {
-      console.log('Deleting patient with ID:', patientToDelete._id);
-
       await submissions.deleteSubmission(patientToDelete._id, {
         permanent: false
       });
@@ -407,7 +393,7 @@ const PatientDashboard: React.FC = () => {
                     onPrintPatient={handlePrintPatient}
                     onDeletePatient={handleDeletePatient}
                     onEditPatient={handleEditPatient}
-                    onUpdatePatientStatus={(id, status) => console.log('Update status', id, status)}
+                    onUpdatePatientStatus={() => {}}
                     searchTerm={filters.searchTerm}
                     onSearchChange={(value) => updateFilter('searchTerm', value)}
                     totalPatients={allSubmissions.length}

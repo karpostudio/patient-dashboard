@@ -35,8 +35,26 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
     const [isLoading, setIsLoading] = useState(false);
     const [originalData, setOriginalData] = useState<any>({});
 
+    // Time slots for availability - defined here so it can be used in useEffect
+    const timeSlots = [
+        '08-09', '09-10', '10-11', '11-12',
+        '12-13', '13-14', '14-15', '15-16',
+        '16-17', '17-18'
+    ];
+
+    // Helper function to convert stored format to display format
+    const convertStoredToDisplay = (storedFormat: string): string => {
+        const [start, end] = storedFormat.split('-');
+        const startPadded = start.padStart(2, '0');
+        const endPadded = end.padStart(2, '0');
+        return `${startPadded}-${endPadded}`;
+    };
+
     useEffect(() => {
-        if (patient) {
+        // Track if component is mounted
+        let isMounted = true;
+
+        if (patient && isMounted) {
             // Exclude signature field from form data since we're not editing it
             const { signature_3730, ...submissionsWithoutSignature } = patient.submissions;
             const data = { ...submissionsWithoutSignature };
@@ -59,10 +77,14 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
                 });
             }
 
-            console.log('Loading patient data:', data);
             setFormData(data);
             setOriginalData(data);
         }
+
+        // Cleanup function to prevent state updates on unmounted component
+        return () => {
+            isMounted = false;
+        };
     }, [patient]);
 
     const handleInputChange = (field: string, value: any) => {
@@ -77,12 +99,6 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
 
         setIsLoading(true);
         try {
-            console.log('=== DEBUG: Starting submission update with elevation ===');
-            console.log('Patient object:', patient);
-            console.log('Patient formId:', patient.formId);
-            console.log('Patient revision:', patient.revision);
-            console.log('Patient status:', patient.status);
-
             // Convert availability data back to stored format before saving
             const dataToSave = { ...formData };
             const availabilityFields = ['montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag'];
@@ -92,53 +108,18 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
                 }
             });
 
-            console.log('Form data to save:', dataToSave);
-
-            // Get the latest submission first (like in your working Velo code)
-            console.log('Getting latest submission data...');
+            // Get the latest submission first
             const latestSubmission = await submissions.getSubmission(patient._id);
-            console.log('Latest submission:', latestSubmission);
 
             // Ensure we have submissions data
             if (!latestSubmission.submissions) {
                 throw new Error('Submission data is missing');
             }
 
-            console.log('Original signature field:', latestSubmission.submissions.signature_3730);
-            console.log('Full original submissions:', JSON.stringify(latestSubmission.submissions, null, 2));
+            // Preserve the signature field exactly as it is - don't modify it
+            const signatureField = latestSubmission.submissions.signature_3730;
 
-            // Fix invalid signature fields by providing default values
-            let signatureField = latestSubmission.submissions.signature_3730;
-
-            if (signatureField && Array.isArray(signatureField) && signatureField.length > 0) {
-                // Check if the signature has invalid/null values and fix them
-                const sig = signatureField[0];
-
-                // If url is null, undefined, or not a string, set it to a valid placeholder
-                if (!sig.url || typeof sig.url !== 'string') {
-                    console.log('Fixing null/invalid URL in signature');
-                    signatureField = [{
-                        url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', // 1x1 transparent PNG
-                        fileId: sig.fileId || 'placeholder',
-                        displayName: sig.displayName || 'signature',
-                        fileType: sig.fileType || 'image/jpeg',
-                        ...(sig.imported ? { imported: sig.imported } : {})
-                    }];
-                }
-            } else if (!signatureField || (Array.isArray(signatureField) && signatureField.length === 0)) {
-                // No signature or empty array - create valid placeholder signature
-                console.log('Creating default placeholder signature structure');
-                signatureField = [{
-                    url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', // 1x1 transparent PNG
-                    fileId: 'placeholder',
-                    displayName: 'signature',
-                    fileType: 'image/png'
-                }];
-            }
-
-            console.log('Fixed signature field:', signatureField);
-
-            // Create update payload following your working Velo pattern
+            // Create update payload
             const updatePayload = {
                 formId: latestSubmission.formId,
                 revision: latestSubmission.revision,
@@ -146,29 +127,22 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
                 submissions: {
                     ...latestSubmission.submissions,
                     ...dataToSave,
-                    signature_3730: signatureField // Always include the fixed signature
+                    signature_3730: signatureField
                 }
             };
 
-            console.log('Final update payload with fixed signature:', JSON.stringify(updatePayload.submissions.signature_3730, null, 2));
-
-            // Update the submission using the same method as your working code
-            const updatedSubmission = await submissions.updateSubmission(patient._id, updatePayload);
-
-            console.log('Update result:', updatedSubmission);
+            // Update the submission
+            await submissions.updateSubmission(patient._id, updatePayload);
 
             dashboard.showToast({
                 message: 'Einreichung erfolgreich aktualisiert',
                 type: 'success',
             });
 
-            onSave(); // Refresh the data
+            onSave();
             onClose();
         } catch (error) {
-            console.error('=== DEBUG: Error updating submission ===');
-            console.error('Error details:', error);
-            console.error('Patient object at time of error:', patient);
-
+            console.error('Error updating submission:', error);
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             dashboard.showToast({
                 message: `Fehler beim Aktualisieren der Einreichung: ${errorMessage}`,
@@ -184,25 +158,8 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
         onClose();
     };
 
-    // Time slots for availability
-    const timeSlots = [
-        '08-09', '09-10', '10-11', '11-12',
-        '12-13', '13-14', '14-15', '15-16',
-        '16-17', '17-18'
-    ];
-
-    // Helper function to convert stored format to display format
-    const convertStoredToDisplay = (storedFormat: string): string => {
-        // Convert '8-9' to '08-09'
-        const [start, end] = storedFormat.split('-');
-        const startPadded = start.padStart(2, '0');
-        const endPadded = end.padStart(2, '0');
-        return `${startPadded}-${endPadded}`;
-    };
-
     // Helper function to convert display format to stored format
     const convertDisplayToStored = (displayFormat: string): string => {
-        // Convert '08-09' to '8-9'
         const [start, end] = displayFormat.split('-');
         const startHour = parseInt(start);
         const endHour = parseInt(end);
@@ -212,8 +169,6 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
     // Helper function to render time slot grid for a day
     const renderTimeSlotGrid = (dayField: string, dayLabel: string) => {
         const selectedSlots = Array.isArray(formData[dayField]) ? formData[dayField] : [];
-
-        console.log(`${dayLabel} selected slots:`, selectedSlots);
 
         const toggleTimeSlot = (timeSlot: string) => {
             const isSelected = selectedSlots.includes(timeSlot);
@@ -225,7 +180,6 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
                 newSelectedSlots = [...selectedSlots, timeSlot];
             }
 
-            console.log(`Updating ${dayLabel} slots:`, newSelectedSlots);
             handleInputChange(dayField, newSelectedSlots);
         };
 
@@ -253,8 +207,6 @@ export const EditSubmissionModal: React.FC<EditSubmissionModalProps> = ({
                     >
                         {timeSlots.map((timeSlot) => {
                             const isSelected = selectedSlots.includes(timeSlot);
-                            console.log(`${timeSlot} in ${dayLabel}: selected=${isSelected}, selectedSlots=`, selectedSlots);
-
                             return (
                                 <Button
                                     key={timeSlot}
