@@ -34,9 +34,12 @@ export const PatientDetailsModal: React.FC<PatientDetailsModalProps> = ({
         let isMounted = true;
 
         const loadSignature = async () => {
+            // Reset state immediately to prevent previous patient's signature from flashing
+            setSignatureUrl(null);
+            setSignatureFailed(false);
+            setSignatureLoading(false);
+
             if (!patient) {
-                setSignatureUrl(null);
-                setSignatureFailed(false);
                 return;
             }
 

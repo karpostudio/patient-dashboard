@@ -1,5 +1,15 @@
 import { PatientSubmission } from '../types';
 
+const escapeHtml = (str: string): string => {
+    if (!str) return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+};
+
 export const printPatientDetails = (patient: PatientSubmission, signatureUrl?: string | null) => {
     const formatToGermanDate = (dateString: string) => {
         if (!dateString) return "Ungültiges Datum";
@@ -132,7 +142,7 @@ export const printPatientDetails = (patient: PatientSubmission, signatureUrl?: s
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>Patientendetails - ${patient.submissions.name_1 || ''} ${patient.submissions.vorname || ''}</title>
+            <title>Patientendetails - ${escapeHtml(patient.submissions.name_1 || '')} ${escapeHtml(patient.submissions.vorname || '')}</title>
             <style>
                 @page {
                     size: A4;
@@ -254,11 +264,11 @@ export const printPatientDetails = (patient: PatientSubmission, signatureUrl?: s
                     <tbody>
                         <tr>
                             <td class="label">Name, Vorname</td>
-                            <td colspan="3">${`${patient.submissions.name_1 || ''} ${patient.submissions.vorname || ''}`.trim()}</td>
+                            <td colspan="3">${escapeHtml(`${patient.submissions.name_1 || ''} ${patient.submissions.vorname || ''}`.trim())}</td>
                         </tr>
                         <tr>
                             <td class="label">Geschlecht</td>
-                            <td>${patient.submissions.geschlecht || ''}</td>
+                            <td>${escapeHtml(patient.submissions.geschlecht || '')}</td>
                             <td class="label-small">Geburtsdatum</td>
                             <td>${patient.submissions.geburtsdatum
             ? formatToGermanDate(patient.submissions.geburtsdatum)
@@ -267,43 +277,43 @@ export const printPatientDetails = (patient: PatientSubmission, signatureUrl?: s
                         </tr>
                         <tr>
                             <td class="label">Adresse</td>
-                            <td colspan="3">${patient.submissions.address_51bd || ''}</td>
+                            <td colspan="3">${escapeHtml(patient.submissions.address_51bd || '')}</td>
                         </tr>
                         <tr>
                             <td class="label">Telefon</td>
-                            <td>${patient.submissions.telefon || ''}</td>
+                            <td>${escapeHtml(patient.submissions.telefon || '')}</td>
                             <td class="label-small">AB/Mailbox aktiv?</td>
-                            <td>${patient.submissions.ab_mailbox_activ || ''}</td>
+                            <td>${escapeHtml(patient.submissions.ab_mailbox_activ || '')}</td>
                         </tr>
                         <tr>
                             <td class="label">Email</td>
-                            <td colspan="3">${patient.submissions.email_726a || ''}</td>
+                            <td colspan="3">${escapeHtml(patient.submissions.email_726a || '')}</td>
                         </tr>
                         <tr>
                             <td class="label">Name der anmeldenden Person</td>
-                            <td>${patient.submissions.name_der_anmeldenden_person || ''}</td>
+                            <td>${escapeHtml(patient.submissions.name_der_anmeldenden_person || '')}</td>
                             <td class="label-small">Verhältnis</td>
-                            <td>${patient.submissions.verhaeltnis || ''}</td>
+                            <td>${escapeHtml(patient.submissions.verhaeltnis || '')}</td>
                         </tr>
                         <tr>
                             <td class="label">Hausbesuch verordnet?</td>
-                            <td>${patient.submissions.wurde_ein_hausbesuch_verordnet || ''}</td>
+                            <td>${escapeHtml(patient.submissions.wurde_ein_hausbesuch_verordnet || '')}</td>
                             <td class="label-small">Zuzahlungsbefreit?</td>
-                            <td>${patient.submissions.bei_volljaehrigen_patienten_zuzahlungsbefreit || ''}</td>
+                            <td>${escapeHtml(patient.submissions.bei_volljaehrigen_patienten_zuzahlungsbefreit || '')}</td>
                         </tr>
                         <tr>
                             <td class="label tall-cell">Diagnose oder Grund Ihrer Anmeldung</td>
-                            <td class="tall-cell" colspan="3">${patient.submissions.diagnose_oder_grund_ihrer_anmeldung || ''}</td>
+                            <td class="tall-cell" colspan="3">${escapeHtml(patient.submissions.diagnose_oder_grund_ihrer_anmeldung || '')}</td>
                         </tr>
                         <tr>
                             <td class="label">Verordnende/r Ärztin/Arzt</td>
-                            <td>${patient.submissions.verordnende_r_aerztin_arzt || ''}</td>
+                            <td>${escapeHtml(patient.submissions.verordnende_r_aerztin_arzt || '')}</td>
                             <td class="label-small">Krankenkasse</td>
-                            <td>${patient.submissions.krankenkasse || ''}</td>
+                            <td>${escapeHtml(patient.submissions.krankenkasse || '')}</td>
                         </tr>
                         <tr>
                             <td class="label">Schon einmal bei uns in Behandlung?</td>
-                            <td colspan="3">${patient.submissions.waren_sie_schon_einmal_bei_uns_in_behandlung || ''}</td>
+                            <td colspan="3">${escapeHtml(patient.submissions.waren_sie_schon_einmal_bei_uns_in_behandlung || '')}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -317,11 +327,11 @@ export const printPatientDetails = (patient: PatientSubmission, signatureUrl?: s
                     <tbody>
                         <tr>
                             <td class="label">Kurzfristige Termine</td>
-                            <td colspan="3">${patient.submissions.wuerden_sie_auch_kurzfristige_termine_wahrnehmen_koennen_wenn_z || ''}</td>
+                            <td colspan="3">${escapeHtml(patient.submissions.wuerden_sie_auch_kurzfristige_termine_wahrnehmen_koennen_wenn_z || '')}</td>
                         </tr>
                         <tr>
                             <td class="label tall-cell">Etwas Wichtiges?</td>
-                            <td class="tall-cell" colspan="3">${patient.submissions.noch_etwas_wichtiges || ''}</td>
+                            <td class="tall-cell" colspan="3">${escapeHtml(patient.submissions.noch_etwas_wichtiges || '')}</td>
                         </tr>
                         <tr>
                             <td class="label">Datum</td>

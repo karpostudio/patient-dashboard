@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Page,
   WixDesignSystemProvider,
@@ -26,7 +26,7 @@ import {
   Tooltip
 } from '@wix/design-system';
 import '@wix/design-system/styles.global.css';
-import * as Icons from '@wix/wix-ui-icons-common';
+import { Delete, Note, Tag, Hint, ExternalLink, Refresh, ChevronDown, Add } from '@wix/wix-ui-icons-common';
 import { dashboard } from '@wix/dashboard';
 import { appInstances } from '@wix/app-management';
 import { usePatientData } from '../../hooks/usePatientData';
@@ -38,6 +38,7 @@ import { PatientDetailsModal } from '../../components/PatientDetailsModal';
 import { printPatientDetails } from '../../utils/printUtils';
 import { useNotes } from '../../hooks/useNotes';
 import { EditSubmissionModal } from '../../components/EditSubmissionModal';
+import { calculateWaitingTime } from '../../utils/helpers';
 
 
 import { submissions } from '@wix/forms';
@@ -48,8 +49,7 @@ import { submissions } from '@wix/forms';
 
 
 const PatientDashboard: React.FC = () => {
-  const [currentTime, setCurrentTime] = useState('');
-  const [currentDate, setCurrentDate] = useState('');
+  const [clock, setClock] = useState({ time: '', date: '' });
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -97,24 +97,22 @@ const PatientDashboard: React.FC = () => {
     fetchAppVersion();
   }, []);
 
-  // Update time every minute - MUST be before conditional returns
+  // Update time every minute - single state update to avoid double renders
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      const berlinTime = now.toLocaleTimeString('de-DE', {
+      const time = now.toLocaleTimeString('de-DE', {
         timeZone: 'Europe/Berlin',
         hour: '2-digit',
         minute: '2-digit',
         hour12: false
       });
-      const berlinDate = now.toLocaleDateString('de-DE', {
+      const date = now.toLocaleDateString('de-DE', {
         timeZone: 'Europe/Berlin',
         day: 'numeric',
         month: 'long'
       });
-
-      setCurrentTime(berlinTime);
-      setCurrentDate(berlinDate);
+      setClock({ time, date });
     };
 
     updateTime();
@@ -122,86 +120,59 @@ const PatientDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Calculate statistics
-  const ageGroups = calculateAgeGroups(allSubmissions);
-  const genderGroups = calculateGenderGroups(allSubmissions);
-  const waitingTime = { months: 7, days: 23 }; // You can calculate this based on real data later
+  // Calculate statistics (memoized)
+  const ageGroups = useMemo(() => calculateAgeGroups(allSubmissions), [allSubmissions]);
+  const genderGroups = useMemo(() => calculateGenderGroups(allSubmissions), [allSubmissions]);
+  const waitingTime = useMemo(() => calculateWaitingTime(allSubmissions), [allSubmissions]);
 
-  // NOW you can do conditional returns - AFTER all hooks are called
-  if (loading) {
-    return (
-      <WixDesignSystemProvider features={{ newColorsBranding: true }}>
-        <Page>
-          <Box textAlign="center" padding="80px">
-            <Loader />
-            <Text>Lade Patientendaten...</Text>
-          </Box>
-        </Page>
-      </WixDesignSystemProvider>
-    );
-  }
-
-  if (error) {
-    return (
-      <WixDesignSystemProvider features={{ newColorsBranding: true }}>
-        <Page>
-          <Box textAlign="center" padding="40px">
-            <Text>Fehler beim Laden der Daten: {error}</Text>
-            <Button onClick={loadSubmissions}>Erneut versuchen</Button>
-          </Box>
-        </Page>
-      </WixDesignSystemProvider>
-    );
-  }
-
-  const handleRefresh = async () => {
+  // ALL useCallback hooks MUST be before conditional returns (Rules of Hooks)
+  const handleRefresh = useCallback(async () => {
     dashboard.showToast({
       message: 'Daten werden aktualisiert...',
       type: 'success',
     });
     await loadSubmissions();
-  };
+  }, [loadSubmissions]);
 
-  const handleAddNewRegistration = () => {
+  const handleAddNewRegistration = useCallback(() => {
     window.open('https://www.logopaedie-falkensee.de/anmeldung', '_blank');
-  };
+  }, []);
 
-  const handleViewPatient = (patient: any) => {
+  const handleViewPatient = useCallback((patient: any) => {
     setSelectedPatient(patient);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     setIsModalOpen(false);
     setSelectedPatient(null);
-  };
+  }, []);
 
-  const handlePrintPatient = async (patient: any, signatureUrl?: string | null) => {
+  const handlePrintPatient = useCallback(async (patient: any, signatureUrl?: string | null) => {
     printPatientDetails(patient, signatureUrl);
-  };
+  }, []);
 
-  const handleEditPatient = (patient: any) => {
+  const handleEditPatient = useCallback((patient: any) => {
     setPatientToEdit(patient);
     setIsEditModalOpen(true);
-  };
+  }, []);
 
-  const handleCloseEditModal = () => {
+  const handleCloseEditModal = useCallback(() => {
     setIsEditModalOpen(false);
     setPatientToEdit(null);
-  };
+  }, []);
 
-  const handleSaveEdit = async () => {
-    // Refresh the data after successful save
+  const handleSaveEdit = useCallback(async () => {
     await loadSubmissions();
-  };
+  }, [loadSubmissions]);
 
-  const handleDeletePatient = (patientId: string) => {
+  const handleDeletePatient = useCallback((patientId: string) => {
     const patient = allSubmissions.find(p => p._id === patientId);
     setPatientToDelete(patient);
     setIsDeleteModalOpen(true);
-  };
+  }, [allSubmissions]);
 
-  const confirmDeletePatient = async () => {
+  const confirmDeletePatient = useCallback(async () => {
     if (!patientToDelete) return;
 
     try {
@@ -227,12 +198,53 @@ const PatientDashboard: React.FC = () => {
         type: 'error',
       });
     }
-  };
+  }, [patientToDelete, loadSubmissions]);
 
-  const cancelDeletePatient = () => {
+  const cancelDeletePatient = useCallback(() => {
     setIsDeleteModalOpen(false);
     setPatientToDelete(null);
-  };
+  }, []);
+
+  // NOW conditional returns - AFTER all hooks are called
+  if (loading) {
+    return (
+      <WixDesignSystemProvider features={{ newColorsBranding: true }}>
+        <Page>
+          <Box direction="vertical" align="center" verticalAlign="middle" padding="80px" gap="SP4">
+            <Box width="240px" height="6px" backgroundColor="#E0E0E0" borderRadius="3px" overflow="hidden">
+              <style>{`
+                @keyframes loading-slide {
+                  0% { transform: translateX(-100%); }
+                  100% { transform: translateX(300%); }
+                }
+              `}</style>
+              <Box
+                width="40%"
+                height="6px"
+                borderRadius="3px"
+                backgroundColor="#3B82F6"
+                style={{ animation: 'loading-slide 1.4s ease-in-out infinite' }}
+              />
+            </Box>
+            <Text size="small" skin="disabled">Lade Patientendaten...</Text>
+          </Box>
+        </Page>
+      </WixDesignSystemProvider>
+    );
+  }
+
+  if (error) {
+    return (
+      <WixDesignSystemProvider features={{ newColorsBranding: true }}>
+        <Page>
+          <Box textAlign="center" padding="40px">
+            <Text>Fehler beim Laden der Daten: {error}</Text>
+            <Button onClick={loadSubmissions}>Erneut versuchen</Button>
+          </Box>
+        </Page>
+      </WixDesignSystemProvider>
+    );
+  }
 
   const handleOpenTrash = () => {
     try {
@@ -278,17 +290,17 @@ const PatientDashboard: React.FC = () => {
   const moreActionsMenuItems = [
     {
       text: 'Papierkorb',
-      prefixIcon: <Icons.Delete />,
+      prefixIcon: <Delete />,
       onClick: handleOpenTrash
     },
     {
       text: 'Notizen',
-      prefixIcon: <Icons.Note />,
+      prefixIcon: <Note />,
       onClick: handleOpenNotes
     },
     {
       text: 'Etiketten',
-      prefixIcon: <Icons.Tag />,
+      prefixIcon: <Tag />,
       onClick: handleOpenLabels
     }
   ];
@@ -300,11 +312,11 @@ const PatientDashboard: React.FC = () => {
           title={
             <Box direction="horizontal" gap="SP2" align="left">
               <span>Patientenliste</span>
-              <Badge size="small" skin="standard" type="solid">
+              <Badge size="small" skin="standard" type="outlined">
                 {appVersion}
               </Badge>
               {/* <TextButton
-                prefixIcon={<Icons.Hint size="20px" />}
+                prefixIcon={<Hint size="20px" />}
                 size="small"
                 underline="always"
                 onClick={() => setIsWhatsNewOpen(true)}
@@ -320,7 +332,7 @@ const PatientDashboard: React.FC = () => {
               onClick={() => window.open('https://www.logopaedie-falkensee.de/', '_blank', 'noopener,noreferrer')}
               size="small"
               skin="standard"
-              suffixIcon={<Icons.ExternalLink size="14px" />}
+              suffixIcon={<ExternalLink size="14px" />}
               underline="always"
             >
               www.logopaedie-falkensee.de
@@ -330,7 +342,7 @@ const PatientDashboard: React.FC = () => {
             <Box direction="horizontal" gap="SP3">
               <Tooltip content="Aktualisieren">
                 <IconButton onClick={handleRefresh} skin="standard" priority="secondary">
-                  <Icons.Refresh />
+                  <Refresh />
                 </IconButton>
               </Tooltip>
               {/* More Actions PopoverMenu */}
@@ -338,7 +350,7 @@ const PatientDashboard: React.FC = () => {
                 <PopoverMenu
                   triggerElement={
                     <Button
-                      suffixIcon={<Icons.ChevronDown />}
+                      suffixIcon={<ChevronDown />}
                       size="medium"
                       skin="standard"
                       priority="secondary"
@@ -360,7 +372,7 @@ const PatientDashboard: React.FC = () => {
               </Box>
               <Button
                 onClick={handleAddNewRegistration}
-                prefixIcon={<Icons.Add />}
+                prefixIcon={<Add />}
               >
                 Neue Einreichung Hinzufügen
               </Button>
@@ -378,8 +390,8 @@ const PatientDashboard: React.FC = () => {
                   waitingTime={waitingTime}
                   ageGroups={ageGroups}
                   genderGroups={genderGroups}
-                  currentTime={currentTime}
-                  currentDate={currentDate}
+                  currentTime={clock.time}
+                  currentDate={clock.date}
                 />
               </Box>
 

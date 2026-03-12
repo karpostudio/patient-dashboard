@@ -285,40 +285,39 @@ export const findOrCreateLabel = webMethod(
   }
 );
 
-// Remove specific labels from a contact (same pattern as notes system)
+// Remove specific labels from a contact (via Labels collection for email-based inheritance)
 export const removeLabelsFromContact = webMethod(
   Permissions.Anyone,
   async (submissionId: string, email: string, name: string, labelsToRemove: string[]): Promise<BackendResponse> => {
     try {
-      if (!submissionId || !labelsToRemove || labelsToRemove.length === 0) {
-        return { success: false, error: 'SubmissionId and labelsToRemove are required' };
+      if (!email || email.trim() === '' || !labelsToRemove || labelsToRemove.length === 0) {
+        return { success: false, error: 'Email and labelsToRemove are required' };
       }
 
-      // Find existing note for this submission
-      const existingNote = await items.query("Notes")
-        .eq("submissionId", submissionId)
+      const trimmedEmail = email.trim();
+
+      // Find existing label record for this email in Labels collection
+      const existingLabelRecord = await items.query("Labels")
+        .eq("email", trimmedEmail)
         .limit(1)
         .find();
 
-      if (existingNote.items.length === 0) {
+      if (existingLabelRecord.items.length === 0) {
         return { success: true, data: null };
       }
 
-      const note = existingNote.items[0];
-      const currentLabels = Array.isArray(note.labelTags) ? note.labelTags : [];
+      const labelRecord = existingLabelRecord.items[0];
+      const currentLabels = Array.isArray(labelRecord.labelTags) ? labelRecord.labelTags : [];
 
       // Filter out the labels to remove
-      const updatedLabels = currentLabels.filter(label =>
+      const updatedLabels = currentLabels.filter((label: string) =>
         !labelsToRemove.includes(label)
       );
 
-      // Update the note with filtered labels (preserve existing notes and other fields)
-      const result = await items.update("Notes", {
-        _id: note._id,
-        submissionId,
-        email: email,
-        name: name,
-        notes: note.notes || '',
+      // Update the Labels collection record
+      const result = await items.update("Labels", {
+        _id: labelRecord._id,
+        email: trimmedEmail,
         labelTags: updatedLabels
       });
 

@@ -13,18 +13,22 @@
     "@wix/sdk": "^1.15.24",
     "@wix/web-methods": "^1.0.6",
     "@wix/wix-ui-icons-common": "^3.77.1",
-    "immutable": "^5.1.3",
+    "immutable": "^3.8.3",
     "recharts": "^3.1.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^12.1.5",
     "@types/react": "^16.0.0",
     "@types/react-dom": "^16.0.0",
-    "@wix/cli": "^1.1.140",
-    "@wix/cli-app": "^1.1.140",
+    "@wix/cli": "^1.1.166",
+    "@wix/cli-app": "^1.1.166",
     "@wix/sdk-types": "^1.0.0",
+    "jsdom": "^28.1.0",
     "react": "16.14.0",
     "react-dom": "16.14.0",
-    "typescript": "~5.8.2"
+    "typescript": "~5.8.2",
+    "vitest": "^4.0.18"
   },
   "scripts": {
     "wix": "wix",
@@ -34,6 +38,9 @@
     "preview": "wix app preview",
     "generate": "wix app generate",
     "logs": "wix app logs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   }
 }

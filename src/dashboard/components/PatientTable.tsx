@@ -2,7 +2,7 @@
 // FIXED: PatientTable.tsx - Corrected Pagination Props
 // ==============================================
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Table,
     Button,
@@ -22,6 +22,7 @@ import {
     TextButton
 } from '@wix/design-system';
 import * as Icons from '@wix/wix-ui-icons-common';
+import { dashboard } from '@wix/dashboard';
 import { PatientSubmission } from '../types';
 import { formatToGermanDate, calculateAge } from '../utils/helpers';
 import { useNotes } from '../hooks/useNotes';
@@ -29,6 +30,89 @@ import { useLabels } from '../hooks/useLabels';
 import { LabelSelectionModal } from './LabelSelectionModal';
 
 
+
+const TABLE_STYLES = `
+    .patient-table-container table tbody tr {
+        transition: background-color 0.15s ease;
+    }
+    .patient-table-container table tbody tr:hover {
+        background-color: rgba(59, 130, 246, 0.08) !important;
+    }
+    .patient-table-container table tbody tr:hover td {
+        background-color: transparent !important;
+    }
+    .table-row-hover:hover {
+        background-color: rgba(59, 130, 246, 0.08) !important;
+    }
+    .table-container {
+        overflow-x: auto;
+        min-width: 100%;
+    }
+    table { min-width: 1000px !important; }
+    .table-container::-webkit-scrollbar {
+        height: 8px;
+    }
+    .table-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    .table-container::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+    }
+    .table-container::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+    .note-input-container {
+        width: calc(100% - 36px);
+        min-width: 200px;
+    }
+    .actions-column {
+        position: sticky !important;
+        right: 20px !important;
+        z-index: 1 !important;
+    }
+    [data-hook="table-list-header"] {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: white;
+    }
+    .modal-content table {
+        max-width: 100% !important;
+        table-layout: fixed;
+        word-wrap: break-word;
+    }
+    .modal-content td {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .custom-grey-text {
+        color: #888888 !important;
+    }
+    .patient-label {
+        display: inline-block;
+        padding: 2px 6px;
+        margin: 1px 2px 1px 0;
+        background-color: #E3F2FD;
+        border: 1px solid #BBDEFB;
+        border-radius: 4px;
+        font-size: 10px;
+        line-height: 1.2;
+        color: #1976D2;
+        white-space: nowrap;
+        max-width: 80px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .patient-labels-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        margin-top: 4px;
+        max-width: 200px;
+    }
+`;
 
 interface PatientTableProps {
     patients: PatientSubmission[];
@@ -61,6 +145,7 @@ export const PatientTable: React.FC<PatientTableProps> = ({
     const [sortField, setSortField] = useState<string>('date');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [editingNotes, setEditingNotes] = useState<{ [submissionId: string]: boolean }>({});
+    const [originalNoteText, setOriginalNoteText] = useState<{ [submissionId: string]: string }>({});
     const [labelModalOpen, setLabelModalOpen] = useState(false);
     const [selectedPatientForLabels, setSelectedPatientForLabels] = useState<PatientSubmission | null>(null);
 
@@ -71,13 +156,8 @@ export const PatientTable: React.FC<PatientTableProps> = ({
     const { emailLabels, loadBatchLabelsByEmails, loadLabelsByEmail } = useLabels();
 
 
-    // Filter patients based on search term
-    const filteredPatients = patients.filter(patient => {
-        if (!searchTerm) return true;
-        const searchLower = searchTerm.toLowerCase();
-        const fullName = `${patient.submissions.name_1 || ''} ${patient.submissions.vorname || ''}`.toLowerCase();
-        return fullName.includes(searchLower);
-    });
+    // patients are already filtered by useFilters (including search) — no duplicate filter needed
+    const filteredPatients = patients;
 
     const [isChangingPage, setIsChangingPage] = useState(false);
 
@@ -118,7 +198,10 @@ export const PatientTable: React.FC<PatientTableProps> = ({
         }
     });
 
-    const currentPatients = sortedPatients.slice(startIndex, endIndex);
+    const currentPatients = useMemo(
+        () => sortedPatients.slice(startIndex, endIndex),
+        [sortedPatients, startIndex, endIndex]
+    );
 
     const handleSort = (field: string) => {
         if (sortField === field) {
@@ -218,111 +301,7 @@ export const PatientTable: React.FC<PatientTableProps> = ({
                 }}
             >
 
-                <style>{`
-    .patient-table-container table tbody tr {
-        transition: background-color 0.15s ease;
-    }
-    .patient-table-container table tbody tr:hover {
-        background-color: rgba(59, 130, 246, 0.08) !important;
-    }
-    .patient-table-container table tbody tr:hover td {
-        background-color: transparent !important;
-    }
-    
-    .table-row-hover:hover {
-        background-color: rgba(59, 130, 246, 0.08) !important;
-    }
-    
-    /* Horizontal scroll styling */
-    .table-container {
-        overflow-x: auto;
-        min-width: 100%;
-    }
-    
-    /* Ensure table has a minimum width */
-    table { min-width: 1000px !important; }
-    
-    /* Custom scrollbar styling */
-    .table-container::-webkit-scrollbar {
-        height: 8px;
-    }
-    
-    .table-container::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 4px;
-    }
-    
-    .table-container::-webkit-scrollbar-thumb {
-        background: #c1c1c1;
-        border-radius: 4px;
-    }
-    
-    .table-container::-webkit-scrollbar-thumb:hover {
-        background: #a8a8a8;
-    }
-
-    .note-input-container {
-        width: calc(100% - 36px);
-        min-width: 200px;
-    }
-  
-    /* Make actions column sticky */
-    .actions-column {
-        position: sticky !important;
-        right: 20px !important;
-
-        z-index: 1 !important;
-    }
-    
-    /* Ensure sticky header works with horizontal scroll */
-    [data-hook="table-list-header"] {
-        position: sticky;
-        top: 0;
-        z-index: 2;
-        background: white;
-    }
-
-    /* Add this to your existing styles */
-    .modal-content table {
-        max-width: 100% !important;
-        table-layout: fixed;
-        word-wrap: break-word;
-    }
-
-    .modal-content td {
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .custom-grey-text {
-        color: #888888 !important;
-    }
-
-    /* Label styling */
-    .patient-label {
-        display: inline-block;
-        padding: 2px 6px;
-        margin: 1px 2px 1px 0;
-        background-color: #E3F2FD;
-        border: 1px solid #BBDEFB;
-        border-radius: 4px;
-        font-size: 10px;
-        line-height: 1.2;
-        color: #1976D2;
-        white-space: nowrap;
-        max-width: 80px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .patient-labels-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 2px;
-        margin-top: 4px;
-        max-width: 200px;
-    }
-  
-`}</style>
+                <style>{TABLE_STYLES}</style>
                 <Card>
                     <TableToolbar>
                         <TableToolbar.ItemGroup position="start">
@@ -640,10 +619,10 @@ export const PatientTable: React.FC<PatientTableProps> = ({
                                                         <Text>-</Text>
                                                     ) : (
                                                         <Badge
-                                                            skin={age <= 18 ? 'standard' : 'premium'}
+                                                            skin={age <= 17 ? 'standard' : 'premium'}
                                                             size="small"
                                                         >
-                                                            {age <= 18 ? 'Kinder' : 'Erwachsene'}
+                                                            {age <= 12 ? 'Kinder' : age <= 17 ? 'Jugendl.' : 'Erwachsene'}
                                                         </Badge>
                                                     )}
                                                 </Box>
@@ -655,7 +634,8 @@ export const PatientTable: React.FC<PatientTableProps> = ({
                                                             textSize="small"
                                                             triggerElement={
                                                                 <IconButton
-                                                                    skin="inverted"
+                                                                    skin="standard"
+                                                                    priority="secondary"
                                                                     size="small"
                                                                 >
                                                                     <Icons.More />
@@ -676,6 +656,8 @@ export const PatientTable: React.FC<PatientTableProps> = ({
                                                             <PopoverMenu.MenuItem
                                                                 text="Notiz hinzufügen"
                                                                 onClick={() => {
+                                                                    // Store original text before editing
+                                                                    setOriginalNoteText(prev => ({ ...prev, [patient._id]: notes[patient._id]?.notes || '' }));
                                                                     // Set editing mode to true
                                                                     setEditingNotes(prev => ({ ...prev, [patient._id]: true }));
 
@@ -744,10 +726,10 @@ export const PatientTable: React.FC<PatientTableProps> = ({
                                                                         skin="destructive"
                                                                         onClick={() => {
                                                                             setEditingNotes(prev => ({ ...prev, [patient._id]: false }));
-                                                                            // Reset the note text to original value
-                                                                            const email = patient.submissions.email_726a?.trim() || '';
-                                                                            const name = `${patient.submissions.vorname || ''} ${patient.submissions.name_1 || ''}`.trim();
-                                                                            loadNoteForSubmission(patient._id, email, name);
+                                                                            // Restore to saved original text instead of re-fetching (which returns cached modified value)
+                                                                            if (originalNoteText[patient._id] !== undefined) {
+                                                                                updateNoteText(patient._id, originalNoteText[patient._id]);
+                                                                            }
                                                                         }}
                                                                     >
                                                                         Abbrechen
@@ -758,6 +740,11 @@ export const PatientTable: React.FC<PatientTableProps> = ({
                                                                             const success = await saveNote(patient._id, note.notes);
                                                                             if (success) {
                                                                                 setEditingNotes(prev => ({ ...prev, [patient._id]: false }));
+                                                                            } else {
+                                                                                dashboard.showToast({
+                                                                                    message: 'Fehler beim Speichern der Notiz',
+                                                                                    type: 'error',
+                                                                                });
                                                                             }
                                                                         }}
                                                                         disabled={loadingNotes[patient._id]}
@@ -770,6 +757,7 @@ export const PatientTable: React.FC<PatientTableProps> = ({
                                                                 <TextButton
                                                                     size="tiny"
                                                                     onClick={() => {
+                                                                        setOriginalNoteText(prev => ({ ...prev, [patient._id]: note?.notes || '' }));
                                                                         setEditingNotes(prev => ({ ...prev, [patient._id]: true }));
                                                                     }}
                                                                 >
@@ -797,11 +785,11 @@ export const PatientTable: React.FC<PatientTableProps> = ({
                                                             });
                                                         }
                                                         if (e.key === 'Escape' && editingNotes[patient._id]) {
-                                                            // Cancel on Escape
+                                                            // Cancel on Escape - restore original text
                                                             setEditingNotes(prev => ({ ...prev, [patient._id]: false }));
-                                                            const email = patient.submissions.email_726a?.trim() || '';
-                                                            const name = `${patient.submissions.vorname || ''} ${patient.submissions.name_1 || ''}`.trim();
-                                                            loadNoteForSubmission(patient._id, email, name);
+                                                            if (originalNoteText[patient._id] !== undefined) {
+                                                                updateNoteText(patient._id, originalNoteText[patient._id]);
+                                                            }
                                                         }
                                                     }}
                                                 />

@@ -7,6 +7,60 @@ import { useState, useEffect } from 'react';
 import { submissions } from '@wix/forms';
 import { PatientSubmission, AgeGroups, GenderGroups } from '../types';
 
+/** Exported for testability */
+export function calculateAgeGroupsFromSubmissions(submissions: PatientSubmission[]): AgeGroups {
+    const ageGroups = { kids: 0, teenagers: 0, adults: 0 };
+
+    submissions.forEach(submission => {
+        const birthDate = submission.submissions.geburtsdatum;
+        if (!birthDate) return;
+
+        const today = new Date();
+        const birthDateObj = new Date(birthDate);
+        if (isNaN(birthDateObj.getTime())) return;
+
+        let age = today.getFullYear() - birthDateObj.getFullYear();
+        const monthDiff = today.getMonth() - birthDateObj.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDateObj.getDate())) {
+            age--;
+        }
+
+        if (age <= 12) {
+            ageGroups.kids++;
+        } else if (age <= 17) {
+            ageGroups.teenagers++;
+        } else if (age <= 120) {
+            ageGroups.adults++;
+        }
+    });
+
+    return ageGroups;
+}
+
+/** Exported for testability */
+export function calculateGenderGroupsFromSubmissions(submissions: PatientSubmission[]): GenderGroups {
+    const genderGroups = { men: 0, women: 0, divers: 0 };
+
+    submissions.forEach(submission => {
+        const gender = submission.submissions.geschlecht;
+        if (!gender) return;
+
+        switch (gender) {
+            case "Männl":
+                genderGroups.men++;
+                break;
+            case "Weibl.":
+                genderGroups.women++;
+                break;
+            case "Divers":
+                genderGroups.divers++;
+                break;
+        }
+    });
+
+    return genderGroups;
+}
+
 export const usePatientData = () => {
     const [allSubmissions, setAllSubmissions] = useState<PatientSubmission[]>([]);
     const [loading, setLoading] = useState(true);
@@ -88,7 +142,7 @@ export const usePatientData = () => {
 
             if (age <= 12) {
                 ageGroups.kids++;
-            } else if (age <= 18) {
+            } else if (age <= 17) {
                 ageGroups.teenagers++;
             } else if (age <= 120) {
                 ageGroups.adults++;

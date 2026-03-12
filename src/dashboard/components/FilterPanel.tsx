@@ -26,6 +26,7 @@ function isAnyFilterActive(filters: FilterState): boolean {
         filters.selectedDay ||
         filters.selectedTimeSlots.length > 0 ||
         filters.selectedHomeVisit.length > 0 ||
+        filters.selectedTreatment.length > 0 ||
         filters.selectedAgeGroups.length > 0 ||
         filters.showDuplicatesOnly ||
         (filters.searchTerm && filters.searchTerm.trim() !== '')

@@ -15,6 +15,7 @@ import {
   IconButton
 } from '@wix/design-system';
 import * as Icons from '@wix/wix-ui-icons-common';
+import { dashboard } from '@wix/dashboard';
 import { useLabels } from '../hooks/useLabels';
 import { PatientSubmission } from '../types';
 
@@ -105,9 +106,18 @@ export const LabelSelectionModal: React.FC<LabelSelectionModalProps> = ({
       if (success) {
         onLabelsAssigned?.();
         onClose();
+      } else {
+        dashboard.showToast({
+          message: 'Fehler beim Speichern der Etiketten',
+          type: 'error',
+        });
       }
     } catch (error) {
       console.error('Error saving labels:', error);
+      dashboard.showToast({
+        message: 'Fehler beim Speichern der Etiketten',
+        type: 'error',
+      });
     } finally {
       setSaving(false);
     }
